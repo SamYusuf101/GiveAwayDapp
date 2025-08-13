@@ -11,18 +11,17 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
  * @dev Implements Chainlink VRFv2.5
  */
 contract GiveawayDapp is VRFConsumerBaseV2Plus {
-
     enum GiveAwayState {
-        OPEN, CALCULATING
+        OPEN,
+        CALCULATING
     }
 
-    event winnerPicked (address indexed recentWinner);
+    event winnerPicked(address indexed recentWinner);
 
     /*ERROS*/
     error GiveAway__NotEnoughEth();
     error TRANSFER__FAILED();
     error GIVEAWAY_notOPen();
-
 
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint16 private constant NUM_WORDS = 1;
@@ -47,7 +46,7 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
         uint32 callBackGasLimit
     ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_entranceFee = entranceFee;
-        i_interval = interval; 
+        i_interval = interval;
         i_keyHash = gasLane;
         i_subscriptionId = subscriptionId;
         i_callBackGasLimit = callBackGasLimit;
@@ -70,8 +69,26 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
         emit GiveawayEntered(msg.sender);
     }
 
-    function selectWinner() external {
-        if ((block.timestamp - s_lastTimeStamp) < i_interval) {
+    /**
+     * @dev function that the chainlin nodes will call to see if a winner
+     * is ready to be picked.
+     */
+
+    function checkUpkeep(
+        bytes memory/* checkData */
+    ) public view returns (bool upKeepNeeded, bytes memory /*performData*/) {
+        bool timeHasPassed =  ((block.timestamp - s_lastTimeStamp) >= i_interval) ;
+        bool isOpen = s_giveAwayState == GiveAwayState.OPEN;
+        bool hasBalance = address(this).balance > 0;
+        bool hasPeople = s_people.length > 0;
+        upKeepNeeded = timeHasPassed && isOpen && hasBalance && hasPeople;
+        return (upKeepNeeded, ""); 
+        
+    }
+
+   function performUpkeep(bytes calldata /* performData */)  external {
+    (bool upkeepNeeded, ) = checkUpkeep("");
+        if (!upkeepNeeded) {
             revert();
         }
 
@@ -92,9 +109,6 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
         uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
     }
 
-  function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {}m
-
-
     function getEntranceFee() external view returns (uint256) {
         return i_entranceFee;
     }
@@ -107,16 +121,14 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
         address payable recentWinner = s_people[indexOfwinner];
         s_recentWinner = recentWinner;
         s_giveAwayState = GiveAwayState.OPEN;
-        s_people = new address payable[] (0);
+        s_people = new address payable[](0);
         s_lastTimeStamp = block.timestamp;
-        (bool success,) = recentWinner.call{value: address(this).balance}("");
+        emit winnerPicked(recentWinner);
+        (bool success, ) = recentWinner.call{value: address(this).balance}("");
         require(success, "Transfer failed");
         //another way to revert!
         // if(!success) {
         //     revert TRSANSFER__FAILED();
         // }
-     emit winnerPicked(recentWinner);
-        
-
     }
 }
