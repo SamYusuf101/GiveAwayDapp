@@ -22,6 +22,7 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
     error GiveAway__NotEnoughEth();
     error TRANSFER__FAILED();
     error GIVEAWAY_notOPen();
+    error GiveAway_UpKeepNotNeeded(uint256 balance, uint256 playersLength, uint256 giveAwayStae);
 
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint16 private constant NUM_WORDS = 1;
@@ -89,7 +90,7 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
    function performUpkeep(bytes calldata /* performData */)  external {
     (bool upkeepNeeded, ) = checkUpkeep("");
         if (!upkeepNeeded) {
-            revert();
+            revert GiveAway_UpKeepNotNeeded(address(this).balance, s_people.length, uint256(s_giveAwayState));
         }
 
         s_giveAwayState = GiveAwayState.CALCULATING;
