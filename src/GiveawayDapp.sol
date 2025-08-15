@@ -132,4 +132,8 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
         //     revert TRSANSFER__FAILED();
         // }
     }
+
+    function getGiveAwaystate () external view returns(GiveAwayState) {
+        return s_giveAwayState;
+    }
 }
