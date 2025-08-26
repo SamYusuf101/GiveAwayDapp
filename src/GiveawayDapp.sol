@@ -136,4 +136,9 @@ contract GiveawayDapp is VRFConsumerBaseV2Plus {
     function getGiveAwaystate () external view returns(GiveAwayState) {
         return s_giveAwayState;
     }
+
+    function getPlayers(uint256 indexOfPlayers) external view returns(address) {
+        return s_people[indexOfPlayers];
+    }
+
 }

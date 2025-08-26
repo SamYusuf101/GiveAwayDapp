@@ -21,7 +21,7 @@ contract DeployGiveAway is Script {
             config.callBackGasLimit
         );
 
-        vm.startBroadcast();
+        vm.stopBroadcast();
         return (giveawayDapp, helperConfig);
     }
 }

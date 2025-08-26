@@ -19,6 +19,8 @@ contract GiveAwaytest is Test {
     GiveawayDapp public giveAwayDapp;
     HelperConfig public helperConfig;
 
+    event GiveawayEntered(address indexed person);
+
     function setUp() public {
         DeployGiveAway deployGiveAway = new DeployGiveAway();
         (giveAwayDapp, helperConfig) = deployGiveAway.deployContract();
@@ -32,7 +34,53 @@ contract GiveAwaytest is Test {
         callBackGasLimit = config.callBackGasLimit;
     }
 
-    function testInitialGiveawayState() public view{
-        assert(giveAwayDapp.getGiveAwaystate() == GiveawayDapp.GiveAwayState.OPEN);
+    function testInitialGiveawayState() public {
+        assert(
+            giveAwayDapp.getGiveAwaystate() == GiveawayDapp.GiveAwayState.OPEN
+        );
+    }
+
+    function testGiveAwayRevertIfYouDntPayEnough() public {
+        vm.prank(PLAYER);
+
+        vm.expectRevert(GiveawayDapp.GiveAway__NotEnoughEth.selector);
+        giveAwayDapp.joinGiveAway();
+    }
+
+    function testGiveAwayrecordsPlayerswhenTheyEnter() public {
+        vm.prank(PLAYER);
+        vm.deal(PLAYER, 10 ether);
+
+        giveAwayDapp.joinGiveAway{value: Starting_player_balance}();
+
+        address peopleList = giveAwayDapp.getPlayers(0);
+
+        assertEq(peopleList, PLAYER);
+    }
+
+    function testEnteringGiveAwayEmitEvent() public {
+        vm.prank(PLAYER);
+        vm.deal(PLAYER, 10 ether);
+
+        vm.expectEmit(true, false, false, false, address(giveAwayDapp));
+
+        emit GiveawayEntered(PLAYER);
+
+        giveAwayDapp.joinGiveAway{value: entranceFee}();
+    }
+
+    function testDontAllowPeopleEnterGiveAwayWhileItsCalculating() public {
+        vm.prank(PLAYER);
+        vm.deal(PLAYER, 10 ether);
+        giveAwayDapp.joinGiveAway{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        giveAwayDapp.performUpkeep("");
+
+        vm.expectRevert(GiveawayDapp.GIVEAWAY_notOPen.selector);
+        vm.prank(PLAYER);
+        vm.deal(PLAYER, 10 ether);
+
+        giveAwayDapp.joinGiveAway{value: entranceFee}();
     }
 }
